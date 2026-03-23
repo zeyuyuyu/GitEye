@@ -1,32 +1,92 @@
+#!/usr/bin/env python3
+
 import os
-import cv2
-import numpy as np
+import sys
+import subprocess
+from typing import Dict, List, Tuple
+from dataclasses import dataclass
+from colorama import init, Fore, Style
 
-def process_image(image_path):
-    """Applies various image processing techniques to the input image."""
-    # Load the image
-    image = cv2.imread(image_path)
+@dataclass
+class GitStatus:
+    staged: List[str]
+    modified: List[str] 
+    untracked: List[str]
+    current_branch: str
+    ahead_behind: Tuple[int, int]
 
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+def get_git_status() -> GitStatus:
+    """Get comprehensive git repository status"""
+    try:
+        # Get current branch
+        branch = subprocess.check_output(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            stderr=subprocess.DEVNULL
+        ).decode().strip()
 
-    # Apply Gaussian blur to reduce noise
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        # Get staged, modified and untracked files
+        status = subprocess.check_output(['git', 'status', '--porcelain']).decode()
+        staged, modified, untracked = [], [], []
+        
+        for line in status.split('\n'):
+            if not line: continue
+            state, file = line[:2], line[3:]
+            if state[0] != ' ': staged.append(file)
+            if state[1] != ' ': modified.append(file)
+            if state == '??': untracked.append(file)
 
-    # Apply Canny edge detection
-    edges = cv2.Canny(blurred, 100, 200)
+        # Get ahead/behind counts
+        ahead = behind = 0
+        try:
+            counts = subprocess.check_output(
+                ['git', 'rev-list', '--left-right', '--count', f'{branch}...origin/{branch}'],
+                stderr=subprocess.DEVNULL
+            ).decode()
+            ahead, behind = map(int, counts.split())
+        except:
+            pass
 
-    # Find contours in the image
-    contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        return GitStatus(
+            staged=staged,
+            modified=modified,
+            untracked=untracked,
+            current_branch=branch,
+            ahead_behind=(ahead, behind)
+        )
 
-    # Draw the contours on the image
-    processed_image = cv2.drawContours(image, contours, -1, (0, 255, 0), 2)
+    except subprocess.CalledProcessError:
+        print(f"{Fore.RED}Not a git repository!{Style.RESET_ALL}")
+        sys.exit(1)
 
-    return processed_image
+def display_status(status: GitStatus) -> None:
+    """Display formatted git status"""
+    print(f"\n{Fore.CYAN}Current branch:{Style.RESET_ALL} {status.current_branch}")
+    
+    ahead, behind = status.ahead_behind
+    if ahead or behind:
+        print(f"{Fore.YELLOW}Branch status:{Style.RESET_ALL}")
+        if ahead: print(f"  ↑ {ahead} commit(s) ahead of origin")
+        if behind: print(f"  ↓ {behind} commit(s) behind origin")
 
-if __name__ == "__main__":
-    # Example usage
-    image_path = "path/to/your/image.jpg"
-    processed_image = process_image(image_path)
-    cv2.imwrite("processed_image.jpg", processed_image)
-    print("Image processing complete.")
+    if status.staged:
+        print(f"\n{Fore.GREEN}Staged changes:{Style.RESET_ALL}")
+        for f in status.staged:
+            print(f"  + {f}")
+
+    if status.modified:
+        print(f"\n{Fore.RED}Modified files:{Style.RESET_ALL}")
+        for f in status.modified:
+            print(f"  * {f}")
+
+    if status.untracked:
+        print(f"\n{Fore.MAGENTA}Untracked files:{Style.RESET_ALL}")
+        for f in status.untracked:
+            print(f"  ? {f}")
+
+def main():
+    init()  # Initialize colorama
+    status = get_git_status()
+    display_status(status)
+
+if __name__ == '__main__':
+    main()
