@@ -1,92 +1,55 @@
-#!/usr/bin/env python3
-
 import os
-import sys
-import subprocess
-from typing import Dict, List, Tuple
-from dataclasses import dataclass
-from colorama import init, Fore, Style
+import json
+import threading
+import websocket
 
-@dataclass
-class GitStatus:
-    staged: List[str]
-    modified: List[str] 
-    untracked: List[str]
-    current_branch: str
-    ahead_behind: Tuple[int, int]
+class GitEyeCollaborator:
+    def __init__(self, username):
+        self.username = username
+        self.socket = websocket.WebSocketApp("ws://giteyeserver.com/collaborate",
+                                          on_message=self.on_message,
+                                          on_error=self.on_error,
+                                          on_close=self.on_close,
+                                          on_open=self.on_open)
+        self.socket.run_forever()
 
-def get_git_status() -> GitStatus:
-    """Get comprehensive git repository status"""
-    try:
-        # Get current branch
-        branch = subprocess.check_output(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-            stderr=subprocess.DEVNULL
-        ).decode().strip()
+    def on_message(self, ws, message):
+        data = json.loads(message)
+        if data['type'] == 'update':
+            self.apply_remote_changes(data['changes'])
+        elif data['type'] == 'chat':
+            print(f"{data['user']}: {data['message']}")
 
-        # Get staged, modified and untracked files
-        status = subprocess.check_output(['git', 'status', '--porcelain']).decode()
-        staged, modified, untracked = [], [], []
-        
-        for line in status.split('\n'):
-            if not line: continue
-            state, file = line[:2], line[3:]
-            if state[0] != ' ': staged.append(file)
-            if state[1] != ' ': modified.append(file)
-            if state == '??': untracked.append(file)
+    def on_error(self, ws, error):
+        print(f"WebSocket error: {error}")
 
-        # Get ahead/behind counts
-        ahead = behind = 0
-        try:
-            counts = subprocess.check_output(
-                ['git', 'rev-list', '--left-right', '--count', f'{branch}...origin/{branch}'],
-                stderr=subprocess.DEVNULL
-            ).decode()
-            ahead, behind = map(int, counts.split())
-        except:
-            pass
+    def on_close(self, ws):
+        print("WebSocket connection closed")
 
-        return GitStatus(
-            staged=staged,
-            modified=modified,
-            untracked=untracked,
-            current_branch=branch,
-            ahead_behind=(ahead, behind)
-        )
+    def on_open(self, ws):
+        def run(*args):
+            while True:
+                local_changes = self.get_local_changes()
+                if local_changes:
+                    self.send_changes(local_changes)
+                time.sleep(1)
+        threading.Thread(target=run).start()
 
-    except subprocess.CalledProcessError:
-        print(f"{Fore.RED}Not a git repository!{Style.RESET_ALL}")
-        sys.exit(1)
+    def get_local_changes(self):
+        # Implement logic to detect local file changes
+        pass
 
-def display_status(status: GitStatus) -> None:
-    """Display formatted git status"""
-    print(f"\n{Fore.CYAN}Current branch:{Style.RESET_ALL} {status.current_branch}")
-    
-    ahead, behind = status.ahead_behind
-    if ahead or behind:
-        print(f"{Fore.YELLOW}Branch status:{Style.RESET_ALL}")
-        if ahead: print(f"  ↑ {ahead} commit(s) ahead of origin")
-        if behind: print(f"  ↓ {behind} commit(s) behind origin")
+    def apply_remote_changes(self, changes):
+        # Implement logic to apply remote changes to local files
+        pass
 
-    if status.staged:
-        print(f"\n{Fore.GREEN}Staged changes:{Style.RESET_ALL}")
-        for f in status.staged:
-            print(f"  + {f}")
-
-    if status.modified:
-        print(f"\n{Fore.RED}Modified files:{Style.RESET_ALL}")
-        for f in status.modified:
-            print(f"  * {f}")
-
-    if status.untracked:
-        print(f"\n{Fore.MAGENTA}Untracked files:{Style.RESET_ALL}")
-        for f in status.untracked:
-            print(f"  ? {f}")
-
-def main():
-    init()  # Initialize colorama
-    status = get_git_status()
-    display_status(status)
+    def send_changes(self, changes):
+        data = {
+            'type': 'update',
+            'user': self.username,
+            'changes': changes
+        }
+        self.socket.send(json.dumps(data))
 
 if __name__ == '__main__':
-    main()
+    collaborator = GitEyeCollaborator("johndoe")
