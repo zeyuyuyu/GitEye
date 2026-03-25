@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoodTunes - Share Your Musical Mood!</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+</head>
+<body class="bg-gradient-to-r from-purple-900 via-purple-700 to-purple-900 min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Viral Share Card Section -->
+        <div id="moodCard" class="mb-8 bg-white/10 backdrop-blur-lg rounded-xl p-6 shadow-2xl transform hover:scale-105 transition-all duration-300">
+            <h1 class="text-4xl font-bold text-center mb-6 animate__animated animate__pulse animate__infinite">✨ MoodTunes ✨</h1>
+            <div class="mood-ring relative w-48 h-48 mx-auto mb-6 rounded-full bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 animate-spin-slow"></div>
+            
+            <!-- Mood Input Section -->
+            <div class="space-y-4">
+                <div class="relative">
+                    <input type="text" id="moodInput" placeholder="How are you feeling right now?" class="w-full p-4 rounded-lg bg-white/20 backdrop-blur border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all">
+                    <button onclick="analyzeMood()" class="absolute right-2 top-2 bg-purple-500 hover:bg-purple-600 rounded-lg px-4 py-2 transition-all">Match My Mood</button>
+                </div>
+            </div>
+
+            <!-- Social Features Section -->
+            <div class="mt-8 space-y-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex space-x-4">
+                        <button onclick="likeMood()" class="flex items-center space-x-2 bg-pink-500 hover:bg-pink-600 rounded-lg px-4 py-2 transition-all">
+                            <span id="likeCount">0</span>
+                            <span>❤️</span>
+                        </button>
+                        <button onclick="shareMood()" class="bg-blue-500 hover:bg-blue-600 rounded-lg px-4 py-2 transition-all">Share My Mood 🌟</button>
+                    </div>
+                    <div class="text-sm">👥 <span id="activeUsers" class="font-bold">1,547</span> people vibing right now</div>
+                </div>
+
+                <!-- Trending Moods -->
+                <div class="bg-white/5 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold mb-2">🔥 Trending Moods</h3>
+                    <div id="trendingMoods" class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1 bg-white/10 rounded-full text-sm">#Energetic (2.3k)</span>
+                        <span class="px-3 py-1 bg-white/10 rounded-full text-sm">#Chill (1.8k)</span>
+                        <span class="px-3 py-1 bg-white/10 rounded-full text-sm">#Romantic (956)</span>
+                    </div>
+                </div>
+
+                <!-- Mood Streaks -->
+                <div class="bg-white/5 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold mb-2">🔥 Your Mood Streak: <span id="streakCount" class="text-yellow-400">3 days</span></h3>
+                    <div class="w-full bg-white/10 rounded-full h-2">
+                        <div class="bg-yellow-400 h-2 rounded-full" style="width: 60%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Challenge Section -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 shadow-2xl mb-8">
+            <h2 class="text-2xl font-bold mb-4">🎯 Daily Mood Challenge</h2>
+            <p class="mb-4">Share your mood with 3 friends to unlock today's exclusive playlist! Progress: 1/3</p>
+            <div class="w-full bg-white/10 rounded-full h-2">
+                <div class="bg-green-400 h-2 rounded-full" style="width: 33%"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulate active users count increasing
+        setInterval(() => {
+            const activeUsers = document.getElementById('activeUsers');
+            activeUsers.textContent = (parseInt(activeUsers.textContent) + Math.floor(Math.random() * 5)).toLocaleString();
+        }, 3000);
+
+        let likes = 0;
+        function likeMood() {
+            likes++;
+            document.getElementById('likeCount').textContent = likes;
+            // Add heart animation
+            const heart = document.createElement('div');
+            heart.className = 'animate__animated animate__fadeOutUp absolute text-4xl';
+            heart.textContent = '❤️';
+            heart.style.left = Math.random() * 80 + 10 + '%';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 1000);
+        }
+
+        function shareMood() {
+            // Create share dialog with social platforms
+            const shareText = 'I'm feeling amazing with MoodTunes! 🎵 Join me and discover your perfect musical mood match! 🌟';
+            if (navigator.share) {
+                navigator.share({
+                    title: 'MoodTunes',
+                    text: shareText,
+                    url: window.location.href
+                });
+            }
+        }
+
+        function analyzeMood() {
+            // Add loading animation
+            const moodRing = document.querySelector('.mood-ring');
+            moodRing.style.animationDuration = '1s';
+            setTimeout(() => moodRing.style.animationDuration = '3s', 2000);
+        }
+    </script>
+
+    <style>
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .animate__fadeOutUp {
+            position: absolute;
+            animation: fadeOutUp 1s ease-out forwards;
+        }
+        @keyframes fadeOutUp {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-100px);
+            }
+        }
+    </style>
+</body>
+</html>
