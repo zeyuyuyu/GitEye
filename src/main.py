@@ -1,21 +1,43 @@
+import os
 import time
 import random
-from swarm_node import SwarmNode
+import subprocess
+from src.governance import GovernanceNode
 
-class SwarmCoordinator:
-    def __init__(self, num_nodes):
-        self.nodes = [SwarmNode() for _ in range(num_nodes)]
-        self.leader = random.choice(self.nodes)
+class MainNode:
+    def __init__(self):
+        self.governance_node = GovernanceNode()
+        self.swarm_nodes = []
+        self.running = True
 
-    def coordinate_swarm(self):
-        while True:
-            for node in self.nodes:
-                if node == self.leader:
-                    self.leader.broadcast_instructions(self.nodes)
-                else:
-                    node.execute_instructions(self.leader.instructions)
-            time.sleep(1)
+    def start(self):
+        print("Main node starting...")
+        self.governance_node.start()
 
-if __name__ == '__main__':
-    coordinator = SwarmCoordinator(10)
-    coordinator.coordinate_swarm()
+        while self.running:
+            # Manage swarm nodes
+            self.manage_swarm()
+            time.sleep(10)
+
+    def manage_swarm(self):
+        # Check swarm node status
+        for node in self.swarm_nodes:
+            if not node.is_alive():
+                self.swarm_nodes.remove(node)
+                print(f"Swarm node {node.id} has stopped. Removing from swarm.")
+
+        # Spawn new swarm nodes if needed
+        while len(self.swarm_nodes) < 10:
+            new_node = SwarmNode(len(self.swarm_nodes))
+            new_node.start()
+            self.swarm_nodes.append(new_node)
+            print(f"New swarm node {new_node.id} has been added to the swarm.")
+
+class SwarmNode:
+    def __init__(self, node_id):
+        self.id = node_id
+        self.running = True
+
+    def start(self):
+        print(f"Swarm node {self.id} starting...")
+        subprocess.Popen(["python\
